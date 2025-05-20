@@ -1,0 +1,11 @@
+name: pyjive
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - jupyter=1.0.0
+  - matplotlib=3.5.2
+  - numpy=1.22.3
+  - pandas=1.4.3
+  - scipy=1.8.1
+  - scikit-learn=1.1.1
