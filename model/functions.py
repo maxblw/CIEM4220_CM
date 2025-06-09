@@ -1,4 +1,5 @@
-# Defining a function for the coordinates and the quadrature points for 1 or 3 points
+import numpy as np
+
 def GaussPoints(points=1):
     if points == 1:
         # 1-point quadrature
@@ -71,6 +72,17 @@ def element_mass(coords, density, N, weights, dN_dxi):
         Me += density * (Ni_matrix.T @ Ni_matrix) * detJ * w
     return Me
 
+def element_force(coords, body_force, N, weights, dN_dxi):
+    fe = np.zeros(6)
+    for i, w in enumerate(weights):
+        Ni = N[i]
+        J = coords.T @ dN_dxi[i]
+        detJ = np.linalg.det(J)
+        for a in range(3):
+            fe[2*a] += Ni[a] * body_force[0] * detJ * w
+            fe[2*a+1] += Ni[a] * body_force[1] * detJ * w
+    return fe
+
 def assemble(mesh, elements, coords, C, density, body_force):
     # Calculate the total number of degrees of freedom (DOFs)
     num_dofs = coords.shape[0] * 2
@@ -111,3 +123,4 @@ def assemble(mesh, elements, coords, C, density, body_force):
     
     # Return the assembled global stiffness matrix, mass matrix, and force vector
     return K, M, f
+
