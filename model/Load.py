@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def goda_original(h, beta, labda1, labda2, Hmax, eta, k):
+def goda_original(h, beta, Hmax, eta, k):
     """
     Calculate the Goda pressure distribution based on the original formula.
     beta = angle of the wave direction
@@ -23,7 +23,7 @@ def goda_original(h, beta, labda1, labda2, Hmax, eta, k):
     alpha2 = min(((h_b - h) / (3* h_b)) * (Hmax / h)**2, (2*h) / Hmax)
     alpha3 = 1 - (h_ / h) * (1 - (1 / np.cosh(k * h)))
    
-    p1 = 1/2 * (np.cos(beta) + 1) * (alpha1 * labda1 + alpha2 * labda2 *(np.cos(beta)) ** 2) * rho * g * Hmax
+    p1 = 1/2 * (np.cos(beta) + 1) * (alpha1 + alpha2 *(np.cos(beta)) ** 2) * rho * g * Hmax
     p3 = alpha3 * p1
     return [p1, p3]
 
