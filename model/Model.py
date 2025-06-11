@@ -47,7 +47,7 @@ def Mesh(lc_small, lc_big, seaside, roof, top, wall, tip):
     gmsh.model.addPhysicalGroup(2, [interior], interior_tag)  # 2 corresponds to surface dimension
 
     sea_side_tag = 1  # Assign a physical group ID
-    gmsh.model.addPhysicalGroup(2, [l_f, l_g, l_e], sea_side_tag)  # 1 to the line segment
+    gmsh.model.addPhysicalGroup(1, [l_f, l_g, l_e], sea_side_tag)  # 1 to the line segment
 
     # # Define physical boundary for the left vertical side (l4)
     bottom_side_tag = 2  # Assign a physical group ID
@@ -74,7 +74,7 @@ def form_mesh(bottom_side_tag, sea_side_tag):
 
     return points, triangles, group_bottom, group_sea, bottom_edges, sea_edges, mesh
 
-def BC(mesh, triangles, points, C, density, body_force, bottom_edges, sea_edges, k_bottom):
+def BC(mesh, triangles, points, C, density, body_force, bottom_edges, sea_edges, k_bottom, roof, q_goda ,printing=False):
     # Assemble the global stiffness matrix, mass matrix, and force vector
     K, M, f = func.assemble(mesh, triangles, points, C, density, body_force)
 
@@ -105,6 +105,27 @@ def BC(mesh, triangles, points, C, density, body_force, bottom_edges, sea_edges,
         f[dof_x] = 0  # Set the force vector to
 
         K[dof_y, dof_y] += k_bottom  # Add the bottom stiffness
+
+    n_fp = 1000
+    z = np.linspace(0, roof, n_fp)  # Length of the breakwater
+    q = -np.array(q_goda)
+    
+
+    idx_coords = [int(dof / 2) for dof in sea_dofs_x]  # Convert to indices for points
+    z_coords = points[idx_coords][:, 1]  # Extract z-coordinates of the seaside nodes
+
+    q_interp = np.interp(z_coords, z, q)
+    if printing == True:
+        plt.plot(z, q, label='Force over length')
+        plt.plot(z_coords, q_interp, 'ro', label='Interpolated Force')
+    dz = z_coords[1] - z_coords[0]
+
+    for dof in sea_dofs_x:
+        z_coord = points[int(dof / 2), 1]
+        i = np.where(z_coords == z_coord)[0]
+        q_comp = q_interp[i]
+        F_comp = q_comp * dz
+        f[dof] = F_comp 
 
     return K, M, f
 
