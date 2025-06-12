@@ -20,15 +20,19 @@ def mesh_size(lc, time_steps, seaside, roof, top, wall, tip, C, density, body_fo
         u_hist = Model.time_discretization(amplification, f, K, M, time_steps, dt, gamma, beta)
         value_left = u_hist[3].flatten()[top_left] # select the deformation at same timestep for ervery lc
         displacement_lc.append(value_left) # storing the values
+        print(f'lc = {round(lc[i],2)} is done')
     return(displacement_lc)
 
-def time_step(T, dt_list, amplification, f, K, M, gamma, beta, top_left):
+def time_step(T, T_eval, dt_list, amplification, f, K, M, gamma, beta, top_left):
     displacement_dt = []
 
     # re-run the model for decreasing timestep dt
     for dt in dt_list:
-        time_steps = np.arange(0, T, dt)
+        time_steps = np.arange(0, T + dt, dt)  # include T
         u_hist = Model.time_discretization(amplification, f, K, M, time_steps, dt, gamma, beta)
+        idx = np.argmin(np.abs(time_steps - T_eval))
         value_left = u_hist[-1].flatten()[top_left]
         displacement_dt.append(value_left)
+        print(f'dt = {dt} is done')
+        print(time_steps[-1])
     return displacement_dt
