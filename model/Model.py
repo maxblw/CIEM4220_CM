@@ -129,42 +129,6 @@ def BC(mesh, triangles, points, C, density, body_force, bottom_edges, sea_edges,
 
     return K, M, f
 
-def time_discretization(amplification, f, K, M, time_steps, dt, gamma, beta):
-
-    u = np.zeros_like(f)
-    v = np.zeros_like(f)
-    a = linalg.spsolve(M, f - K @ u)  # initial acceleration
-
-    K_eff = K + M / (beta * dt**2)
-    K_eff = csr_matrix(K_eff)
-
-    u_hist = []
-
-    for t in time_steps:
-        # Predictor
-        u_star = u + dt * v + 0.5 * dt**2 * (1 - 2 * beta) * a
-        v_star = v + (1 - gamma) * dt * a
-
-        # External force (could be time-dependent)
-        f_ext = f * np.sin(2*np.pi * t) # + other time-dependent forces
-
-        # Effective force
-        f_eff = f_ext + M @ (u_star / (beta * dt**2))
-        # f_eff = csr_matrix(f_eff)
-
-        # Solve for displacement
-        u_new = linalg.spsolve(K_eff, f_eff)
-        # Correct acceleration and velocity
-        a_new = (u_new - u_star) / (beta * dt**2)
-        v_new = v_star + gamma * dt * a_new
-
-        # Update
-        u, v, a = u_new, v_new, a_new
-        u_resh = u.reshape((-1, 2)) * amplification
-        u_hist.append(u_resh.copy())
-
-    return u_hist
-
 def plot_all(time_steps, u_hist, points):
     # Set number of subplots (adjust cols/rows to your preference)
     num_steps = len(time_steps)
@@ -199,3 +163,41 @@ def plot_all(time_steps, u_hist, points):
 
     plt.tight_layout()
     plt.show()
+
+
+def time_discretization(amplification, f, K, M, time_steps, dt, gamma, beta):
+
+    u = np.zeros_like(f)
+    v = np.zeros_like(f)
+    a = linalg.spsolve(M, f - K @ u)  # initial acceleration
+
+    K_eff = K + M / (beta * dt**2)
+    K_eff = csr_matrix(K_eff)
+
+    u_hist = []
+
+    for t in time_steps:
+        # Predictor
+        u_star = u + dt * v + 0.5 * dt**2 * (1 - 2 * beta) * a
+
+        v_star = v + (1 - gamma) * dt * a
+
+        # External force (could be time-dependent)
+        f_ext = f * np.sin(2*np.pi * t) # + other time-dependent forces
+
+        # Effective force
+        f_eff = f_ext + M @ ((u_star/(beta*(dt**2))) + (v_star/(beta*dt)) + ((1/(2*beta))-1)*a)
+        # f_eff = csr_matrix(f_eff)
+
+        # Solve for displacement
+        u_new = linalg.spsolve(K_eff, f_eff)
+        # Correct acceleration and velocity
+        a_new = ((u_new - u_star) / (beta * dt**2)) - (v_star / (beta * dt)) + ((1 - (1/(2 * beta))) *a)
+        v_new = v_star + dt * ((1 - gamma)*a + gamma*(((u_new - u_star)/(beta*(dt**2))) - (v_star/(beta*dt)) + (1-(1/(2*beta)))*a))
+
+        # Update
+        u, v, a = u_new, v_new, a_new
+        u_resh = u.reshape((-1, 2)) * amplification
+        u_hist.append(u_resh.copy())
+
+    return u_hist
