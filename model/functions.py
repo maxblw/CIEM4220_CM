@@ -120,6 +120,8 @@ def assemble(mesh, elements, coords, C, density, body_force):
             
             # Add the force vector contributions to the global force vector
             f[dofs[i]] += fe[i]
+        
+
     
     # Return the assembled global stiffness matrix, mass matrix, and force vector
     return K, M, f

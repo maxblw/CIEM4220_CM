@@ -78,6 +78,7 @@ def BC(mesh, triangles, points, C, density, body_force, bottom_edges, sea_edges,
     # Assemble the global stiffness matrix, mass matrix, and force vector
     K, M, f = func.assemble(mesh, triangles, points, C, density, body_force)
 
+    global sea_dofs, bottom_dofs
     # Find the nodes on the foundation (bottom) boundary
     bottom_Bnodes = np.where(np.isin(points[:, 1], points[bottom_edges[:, 1], 0]))[0]
     bottom_dofs = np.array([[2*n, 2*n+1] for n in bottom_Bnodes]).flatten()
@@ -92,7 +93,6 @@ def BC(mesh, triangles, points, C, density, body_force, bottom_edges, sea_edges,
     for node in sea_Bnodes:
         sea_dofs_x.append(2 * node)  # x-direction dof
         sea_dofs_y.append(2 * node + 1)  # y-direction dof
-
 
     # Apply the stiffness, mass
     for node in bottom_Bnodes:
@@ -199,3 +199,40 @@ def plot_all(time_steps, u_hist, points):
 
     plt.tight_layout()
     plt.show()
+
+def BC_modal(mesh, triangles, points, C, density, body_force, bottom_edges, sea_edges, k_bottom, roof ,printing=False):
+    """""
+    Similar to BC function but leaving the force boundary condition out for use in the modal analysis.
+    """""
+    # Assemble the global stiffness matrix, mass matrix, and force vector
+    K, M, f = func.assemble(mesh, triangles, points, C, density, body_force)
+
+    global sea_dofs, bottom_dofs
+    # Find the nodes on the foundation (bottom) boundary
+    bottom_Bnodes = np.where(np.isin(points[:, 1], points[bottom_edges[:, 1], 0]))[0]
+    bottom_dofs = np.array([[2*n, 2*n+1] for n in bottom_Bnodes]).flatten()
+
+    # Find the nodes on the seaside boundary
+    sea_Bnodes = np.where(np.isin(points[:, 0], points[sea_edges[:, 0], 0]))[0]
+    sea_Bnodes = [int(x) for x in sea_Bnodes if x not in bottom_Bnodes] # exlcude bottom node(s) from seaside nodes
+    sea_dofs = np.array([[2*n, 2*n+1] for n in sea_Bnodes]).flatten()
+    sea_dofs_x = []
+    sea_dofs_y = []
+
+    for node in sea_Bnodes:
+        sea_dofs_x.append(2 * node)  # x-direction dof
+        sea_dofs_y.append(2 * node + 1)  # y-direction dof
+
+    # Apply the stiffness, mass
+    for node in bottom_Bnodes:
+        dof_x = 2 * node
+        dof_y = 2 * node + 1
+        K[dof_x, :] = 0  # Set the row to zero
+        K[dof_x, dof_x] = 1 # add the bottom stiffness
+        M[dof_x, :] = 0  # Set the row to zero
+        M[dof_x, dof_x] = 1  # Set the diagonal to 1
+        f[dof_x] = 0  # Set the force vector to
+
+        K[dof_y, dof_y] += k_bottom  # Add the bottom stiffness
+
+    return K, M, f

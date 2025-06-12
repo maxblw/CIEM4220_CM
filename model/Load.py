@@ -94,7 +94,7 @@ def array_Goda(h_tot, h1, h2, eta, goda, k, H, printing=False):
     if d < h2:
         Pv[np.where(z < h1)] = np.linspace(p3, p1, np.sum(z < h1))
         Pv[np.where((z >= h1) & (z < d))] = np.linspace(p1, 0, len(Pv[np.where((z >= h1) & (z < d))]))
-        print("Pv", np.linspace(p1, 0, len(np.where((z >= h1) & (z < d)))))
+        # print("Pv", np.linspace(p1, 0, len(np.where((z >= h1) & (z < d)))))
         Pr = Pv.copy()  # No correction for this case
 
     if printing == True:
