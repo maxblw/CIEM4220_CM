@@ -212,21 +212,35 @@ def time_discretization(amplification, f, K, M, time_steps, dt, gamma, beta):
     v_n = np.zeros_like(f)
     a_n = linalg.spsolve(M, f - K @ u_n)  # initial acceleration
 
+    # Term for easier calculations
+    bdt2 = beta * dt**2
+
+    # Effective K
     K_eff = K + M / (beta * dt**2)
     K_eff = csr_matrix(K_eff)
 
     u_hist = []
 
     for t in time_steps:
-        u_np1 = u_n + dt * v_n + 0.5 * dt**2 * (1 - 2 * beta) * a_n
+        # term for easy calculations
+        term_1 = v_n / (beta*dt)
 
-        term_1 = (u_np1 - u_n) / (beta * (dt**2))
-        term_2 = v_n / (beta*dt)
+        f_ext = f * np.sin(2*np.pi * t)
+        # Effective force
+        f_eff = f_ext + M @ ( (u_n / bdt2) + term_1 + ((1/(2*beta)) - 1)*a_n)
+
+        # Solve for displacement
+        u_np1 = linalg.spsolve(K_eff, f_eff)
+
+        # extra terms for easy calculations
+        term_2 = (u_np1 - u_n) / bdt2
         term_3 = a_n - (a_n/(2*beta))
 
-        a_np1 = term_1 - term_2 + term_3
+        # Correct acceleration and velocity
+        a_np1 = term_2 - term_1 + term_3
         v_np1 = v_n + dt*((1-gamma)*a_n + gamma*a_np1)
 
+        # assigning new values
         u_n, v_n, a_n = u_np1, v_np1, a_np1
         u_resh = u_n.reshape((-1, 2)) * amplification
         u_hist.append(u_resh.copy())
