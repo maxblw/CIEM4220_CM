@@ -181,17 +181,12 @@ def time_discretization(amplification, f, K, M, time_steps, dt, gamma, beta):
     # Precompute effective stiffness matrix
     K_eff = csr_matrix(K + M / bdt2)
 
-    # Precompute sine values
-    sin_vals = np.sin(2 * np.pi * time_steps)
-
     # Preallocate output array
     u_hist = np.empty((n_steps, n_dof // 2, 2))
 
     for i, t in enumerate(time_steps):
-        f_ext = f * sin_vals[i]
-
         # Effective force
-        f_eff = f_ext + M @ (u_n * inv_bdt2 + v_n * inv_beta_dt + (inv_2beta - 1.0) * a_n)
+        f_eff = f + M @ (u_n * inv_bdt2 + v_n * inv_beta_dt + (inv_2beta - 1.0) * a_n)
 
         # Solve for next displacement
         u_np1 = linalg.spsolve(K_eff, f_eff)
