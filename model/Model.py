@@ -165,84 +165,45 @@ def plot_all(time_steps, u_hist, points):
     plt.show()
 
 
-# def time_discretization(amplification, f, K, M, time_steps, dt, gamma, beta):
-
-#     u = np.zeros_like(f)
-#     v = np.zeros_like(f)
-#     a = linalg.spsolve(M, f - K @ u)  # initial acceleration
-
-#     K_eff = K + M / (beta * dt**2)
-#     K_eff = csr_matrix(K_eff)
-
-#     u_hist = []
-
-#     for t in time_steps:
-#         # Predictor
-#         u_star = u + dt * v + 0.5 * dt**2 * (1 - 2 * beta) * a
-
-#         v_star = v + (1 - gamma) * dt * a
-
-#         # External force (could be time-dependent)
-#         f_ext = f * np.sin(2*np.pi * t) # + other time-dependent forces
-
-#         # Effective force
-#         f_eff = f_ext + M @ ((u_star/(beta*(dt**2))) + (v_star/(beta*dt)) + ((1/(2*beta))-1)*a)
-#         # f_eff = csr_matrix(f_eff)
-
-#         # Solve for displacement
-#         u_new = linalg.spsolve(K_eff, f_eff)
-#         # Correct acceleration and velocity
-#         term_1 = (u_new - u_star) / (beta*(dt**2))
-#         term_2 = - (v_star / (beta*dt)) + (1 - (1/(2*beta)))*a
-
-#         a_new = term_1 + term_2
-
-#         v_new = v_star + dt * ((1 - gamma)*a + gamma*(term_1 + term_2))
-#         # Update
-#         u, v, a = u_new, v_new, a_new
-#         u_resh = u.reshape((-1, 2)) * amplification
-#         u_hist.append(u_resh.copy())
-
-#     return u_hist
-
-
 def time_discretization(amplification, f, K, M, time_steps, dt, gamma, beta):
+    n_dof = f.shape[0]
+    n_steps = len(time_steps)
 
-    u_n = np.zeros_like(f)
-    v_n = np.zeros_like(f)
-    a_n = linalg.spsolve(M, f - K @ u_n)  # initial acceleration
+    u_n = np.zeros(n_dof)
+    v_n = np.zeros(n_dof)
+    a_n = linalg.spsolve(M, f - K @ u_n)
 
-    # Term for easier calculations
     bdt2 = beta * dt**2
+    inv_bdt2 = 1.0 / bdt2
+    inv_beta_dt = 1.0 / (beta * dt)
+    inv_2beta = 1.0 / (2 * beta)
 
-    # Effective K
-    K_eff = K + M / (beta * dt**2)
-    K_eff = csr_matrix(K_eff)
+    # Precompute effective stiffness matrix
+    K_eff = csr_matrix(K + M / bdt2)
 
-    u_hist = []
+    # Precompute sine values
+    sin_vals = np.sin(2 * np.pi * time_steps)
 
-    for t in time_steps:
-        # term for easy calculations
-        term_1 = v_n / (beta*dt)
+    # Preallocate output array
+    u_hist = np.empty((n_steps, n_dof // 2, 2))
 
-        f_ext = f * np.sin(2*np.pi * t)
+    for i, t in enumerate(time_steps):
+        f_ext = f * sin_vals[i]
+
         # Effective force
-        f_eff = f_ext + M @ ( (u_n / bdt2) + term_1 + ((1/(2*beta)) - 1)*a_n)
+        f_eff = f_ext + M @ (u_n * inv_bdt2 + v_n * inv_beta_dt + (inv_2beta - 1.0) * a_n)
 
-        # Solve for displacement
+        # Solve for next displacement
         u_np1 = linalg.spsolve(K_eff, f_eff)
 
-        # extra terms for easy calculations
-        term_2 = (u_np1 - u_n) / bdt2
-        term_3 = a_n - (a_n/(2*beta))
+        # Update acceleration and velocity
+        a_np1 = inv_bdt2 * (u_np1 - u_n) - inv_beta_dt * v_n - (1.0 - 1.0/(2*beta)) * a_n
+        v_np1 = v_n + dt * ((1 - gamma) * a_n + gamma * a_np1)
 
-        # Correct acceleration and velocity
-        a_np1 = term_2 - term_1 + term_3
-        v_np1 = v_n + dt*((1-gamma)*a_n + gamma*a_np1)
+        # Store results
+        u_hist[i] = (u_np1.reshape(-1, 2) * amplification)
 
-        # assigning new values
+        # Prepare for next iteration
         u_n, v_n, a_n = u_np1, v_np1, a_np1
-        u_resh = u_n.reshape((-1, 2)) * amplification
-        u_hist.append(u_resh.copy())
 
     return u_hist
